@@ -21,3 +21,5 @@ else
   ln -s build/compile_commands.json compile_commands.json
 fi
 
+cd build
+./shvim
