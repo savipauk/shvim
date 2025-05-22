@@ -15,18 +15,13 @@ void Engine::add(Component* c) {
 
 void Engine::run() {
   SDL_Event e;
-  int i = 0;
   while (engine_running) {
-    std::cout << "new frame " << i << "\n";
-    int num_of_events = 0;
     while (SDL_PollEvent(&e)) {
-      num_of_events++;
       ImGui_ImplSDL2_ProcessEvent(&e);
 
       if (e.type == SDL_QUIT) {
         engine_running = false;
       }
-      std::cout << "event poll " << i << ", " << num_of_events << "\n";
 
       if (e.type == SDL_TEXTINPUT) {
         continue;
@@ -91,7 +86,6 @@ void Engine::run() {
     if (err != GL_NO_ERROR) {
       std::cout << "OpenGL Error: " << std::to_string(err) << "\n";
     }
-    i++;
   }
 }
 

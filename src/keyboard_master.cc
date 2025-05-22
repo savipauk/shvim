@@ -3,6 +3,7 @@
 #include <SDL_opengl.h>
 #include <SDL_pixels.h>
 
+#include <algorithm>
 #include <iostream>
 
 #include "common.h"
@@ -17,16 +18,8 @@ void KeyboardMaster::on_draw() {
 
   glBegin(GL_LINES);
 
-  glVertex2f(0, CHAR_HEIGHT);
-  glVertex2f(WINDOW_WIDTH, CHAR_HEIGHT);
-
-  glEnd();
-
-  glBegin(GL_LINES);
-
-  int line_at = 0;
-  glVertex2f(CHAR_WIDTH, CHAR_HEIGHT * line_at);
-  glVertex2f(CHAR_WIDTH, CHAR_HEIGHT * (line_at + 1));
+  glVertex2f(0, CHAR_HEIGHT * (cursor_position.y + 1));
+  glVertex2f(WINDOW_WIDTH, CHAR_HEIGHT * (cursor_position.y + 1));
 
   glEnd();
 
@@ -40,24 +33,31 @@ void KeyboardMaster::on_draw() {
   engine->render_text(text, text_x, text_y, color);
   engine->render_text("Testing text rendering...", 30, 80, {200, 200, 50, 255});
 
-  glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+  if (mode == Mode::INSERT) {
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glBegin(GL_LINES);
+    glVertex2f(CHAR_WIDTH * (cursor_position.x + 1),
+               CHAR_HEIGHT * cursor_position.y);
+    glVertex2f(CHAR_WIDTH * (cursor_position.x + 1),
+               CHAR_HEIGHT * (cursor_position.y + 1));
+    glEnd();
+  } else if (mode == Mode::NORMAL) {
+    glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
 
-  glBegin(GL_POLYGON);
+    glBegin(GL_POLYGON);
 
-  glVertex2f(cursor_position.x * CHAR_WIDTH, cursor_position.y * CHAR_HEIGHT);
+    glVertex2f(cursor_position.x * CHAR_WIDTH, cursor_position.y * CHAR_HEIGHT);
+    glVertex2f(cursor_position.x * CHAR_WIDTH + CHAR_WIDTH,
+               cursor_position.y * CHAR_HEIGHT);
+    glVertex2f(cursor_position.x * CHAR_WIDTH + CHAR_WIDTH,
+               cursor_position.y * CHAR_HEIGHT + CHAR_HEIGHT);
+    glVertex2f(cursor_position.x * CHAR_WIDTH,
+               cursor_position.y * CHAR_HEIGHT + CHAR_HEIGHT);
 
-  glVertex2f(cursor_position.x * CHAR_WIDTH + CHAR_WIDTH,
-             cursor_position.y * CHAR_HEIGHT);
+    glEnd();
+  }
 
-  glVertex2f(cursor_position.x * CHAR_WIDTH + CHAR_WIDTH,
-             cursor_position.y * CHAR_HEIGHT + CHAR_HEIGHT);
-
-  glVertex2f(cursor_position.x * CHAR_WIDTH,
-             cursor_position.y * CHAR_HEIGHT + CHAR_HEIGHT);
-
-  glEnd();
-
-  // std::cout << cursor_position.x << " " << cursor_position.y << "\n";
+  std::cout << cursor_position.x << " " << cursor_position.y << "\n";
 }
 
 void KeyboardMaster::on_key_event(const SDL_Event& e) {
@@ -74,8 +74,19 @@ void KeyboardMaster::on_key_event(const SDL_Event& e) {
     }
   }
 
+  if (mode == Mode::INSERT) {
+    if (keys_pressed.count(SDLK_ESCAPE)) {
+      mode = Mode::NORMAL;
+    }
+    return;
+  }
+
   if (keys_pressed.count(SDLK_RETURN)) {
     engine->engine_running = false;
+  }
+
+  if (keys_pressed.count(SDLK_i)) {
+    mode = Mode::INSERT;
   }
 
   move.x -= keys_pressed.count(SDLK_h) || keys_pressed.count(SDLK_LEFT);
@@ -83,12 +94,9 @@ void KeyboardMaster::on_key_event(const SDL_Event& e) {
   move.y -= keys_pressed.count(SDLK_k) || keys_pressed.count(SDLK_UP);
   move.y += keys_pressed.count(SDLK_j) || keys_pressed.count(SDLK_DOWN);
 
-  // std::cout << move.x << "\t" << move.y << "\n";
-  if (cursor_position.x >= 0 && cursor_position.x <= MAX_CHARS - 1) {
-    cursor_position.x += move.x;
-  }
+  cursor_position.x += move.x;
+  cursor_position.x = std::clamp(cursor_position.x, 0, MAX_CHARS - 1);
 
-  if (cursor_position.y >= 0 && cursor_position.y <= MAX_ROWS - 1) {
-    cursor_position.y += move.y;
-  }
+  cursor_position.y += move.y;
+  cursor_position.y = std::clamp(cursor_position.y, 0, MAX_ROWS - 1);
 }
