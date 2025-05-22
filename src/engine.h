@@ -36,6 +36,4 @@ class Engine {
   void run();
 
   void render_text(const std::string& message, int x, int y, SDL_Color color);
-
-  void rtext(std::string message, SDL_Color color, int x, int y);
 };

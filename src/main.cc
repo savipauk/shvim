@@ -74,7 +74,6 @@ int main() {
   Engine engine(window, gl_context, font);
   KeyboardMaster keyboard_master(&engine);
   engine.add(&keyboard_master);
-
   engine.run();
 
   TTF_Quit();
