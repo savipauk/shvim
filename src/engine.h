@@ -18,6 +18,8 @@ class Engine {
   uint64_t last_frame_time;
 
  public:
+  int char_width = 0;
+  int char_height = 0;
   bool engine_running;
 
   Engine(SDL_Window* window, SDL_GLContext gl_context, TTF_Font* font)

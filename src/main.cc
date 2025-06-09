@@ -10,7 +10,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
-#include "keyboard_master.h"
+#include "text_editor.h"
 
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -72,8 +72,6 @@ int main() {
   }
 
   Engine engine(window, gl_context, font);
-  KeyboardMaster keyboard_master(&engine);
-  engine.add(&keyboard_master);
   engine.run();
 
   TTF_Quit();

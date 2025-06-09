@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
+#include "text_editor.h"
 
 void Engine::add(Component* c) {
   components.push_back(c);
@@ -15,6 +16,19 @@ void Engine::add(Component* c) {
 
 void Engine::run() {
   SDL_Event e;
+
+  int minx, maxx, miny, maxy, advance;
+  if (TTF_GlyphMetrics(font, 'A', &minx, &maxx, &miny, &maxy, &advance) == 0) {
+    char_width = advance;
+  }
+  char_height = TTF_FontHeight(font);
+  std::string initial_text = "mjau mjau\nwuf wuf\nmu mu\n";
+  LocationRange cursor_range(
+      Location{0, 0},
+      Location{WINDOW_WIDTH / char_width - 1, WINDOW_HEIGHT / char_height - 1});
+  TextEditor text_editor(this, initial_text, cursor_range);
+  add(&text_editor);
+
   while (engine_running) {
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);
