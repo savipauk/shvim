@@ -1,10 +1,12 @@
 #include "text_editor.h"
 
+#include <SDL_keyboard.h>
 #include <SDL_keycode.h>
 #include <SDL_opengl.h>
 #include <SDL_pixels.h>
 
 #include <algorithm>
+#include <iostream>
 
 #include "common.h"
 
@@ -100,11 +102,73 @@ void TextEditor::on_draw() {
     glEnd();
   }
 }
-void TextEditor::on_key_event(const SDL_Event& e) {
-  auto key = e.key.keysym.sym;
 
+void TextEditor::on_key_event(const SDL_Event& e) {
   switch (e.type) {
+    case SDL_TEXTINPUT: {
+      char key = e.text.text[0];
+
+      if (mode == Mode::INSERT) {
+        model.insert(e.text.text);
+        return;
+      }
+
+      // Movement that's not allowed in insert mode
+      if (key == 'h') model.move_cursor_left();
+      if (key == 'l') model.move_cursor_right();
+      if (key == 'k') model.move_cursor_up();
+      if (key == 'j') model.move_cursor_down();
+
+      if (mode == Mode::VISUAL) {
+        LocationRange range = model.get_selection_range();
+        if (key == 'd') {
+          mode = Mode::NORMAL;
+          model.update_cursor_range_modifier(0);
+          range.end.x += 1;
+          model.delete_range(range);
+          return;
+        }
+        range.end = cursor_location;
+        model.set_selection_range(range);
+        return;
+      }
+
+      if (key == 'i') {
+        mode = Mode::INSERT;
+        model.update_cursor_range_modifier(-1);
+        model.move_cursor_left();
+        return;
+      }
+
+      if (key == 'a') {
+        mode = Mode::INSERT;
+        model.update_cursor_range_modifier(-1);
+        return;
+      }
+
+      if (key == 'v') {
+        mode = Mode::VISUAL;
+        model.update_cursor_range_modifier(1);
+        LocationRange range(cursor_location, cursor_location);
+        model.set_selection_range(range);
+        return;
+      }
+
+      if (key == 'x') {
+        model.delete_before();
+      }
+
+      if (key == 'X') {
+        model.move_cursor_left();
+        model.delete_after();
+        return;
+      }
+
+      break;
+    }
+
     case SDL_KEYDOWN: {
+      auto key = e.key.keysym.sym;
       keys_pressed.insert(key);
 
       // Movement that's allowed in insert mode
@@ -124,7 +188,7 @@ void TextEditor::on_key_event(const SDL_Event& e) {
         }
 
         if (key == SDLK_BACKSPACE) {
-          if (cursor_location.x > 0) {
+          if (cursor_location.x >= 0) {
             model.delete_before();
             model.move_cursor_left();
           } else if (cursor_location.y > 0) {
@@ -134,20 +198,17 @@ void TextEditor::on_key_event(const SDL_Event& e) {
         }
 
         if (key == SDLK_DELETE) {
-          if (cursor_location.x < model.get_current_range().end.x) {
-          }
           model.delete_after();
+          return;
+        }
+
+        if (key == SDLK_RETURN) {
+          model.insert_newline();
           return;
         }
 
         return;
       }
-
-      // Movement that's not allowed in insert mode
-      if (key == SDLK_h) model.move_cursor_left();
-      if (key == SDLK_l) model.move_cursor_right();
-      if (key == SDLK_k) model.move_cursor_up();
-      if (key == SDLK_j) model.move_cursor_down();
 
       if (mode == Mode::VISUAL) {
         if (key == SDLK_ESCAPE) {
@@ -155,16 +216,6 @@ void TextEditor::on_key_event(const SDL_Event& e) {
           model.update_cursor_range_modifier(0);
           return;
         }
-        LocationRange range = model.get_selection_range();
-        if (key == SDLK_d) {
-          mode = Mode::NORMAL;
-          model.update_cursor_range_modifier(0);
-          range.end.x += 1;
-          model.delete_range(range);
-          return;
-        }
-        range.end = cursor_location;
-        model.set_selection_range(range);
       }
 
       if (key == SDLK_ESCAPE) {
@@ -172,41 +223,11 @@ void TextEditor::on_key_event(const SDL_Event& e) {
         return;
       }
 
-      if (key == SDLK_i) {
-        mode = Mode::INSERT;
-        model.update_cursor_range_modifier(-1);
-        model.move_cursor_left();
-        return;
-      }
-
-      if (key == SDLK_a) {
-        mode = Mode::INSERT;
-        model.update_cursor_range_modifier(-1);
-        return;
-      }
-
-      if (key == SDLK_v) {
-        mode = Mode::VISUAL;
-        model.update_cursor_range_modifier(1);
-        LocationRange range(cursor_location, cursor_location);
-        model.set_selection_range(range);
-        return;
-      }
-
-      if (key == SDLK_x) {
-        if (e.key.keysym.mod & KMOD_SHIFT) {
-          model.move_cursor_left();
-          model.delete_after();
-        } else {
-          model.delete_before();
-        }
-        return;
-      }
-
       break;
     }
 
     case SDL_KEYUP: {
+      auto key = e.key.keysym.sym;
       keys_pressed.erase(key);
       break;
     }

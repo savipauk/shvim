@@ -69,6 +69,7 @@ class TextEditorModel {
 
   void insert(char c);
   void insert(std::string text);
+  void insert_newline();
 
   void add_text_observer(TextObserver* observer);
   void remove_text_observer(TextObserver* observer);

@@ -1,4 +1,5 @@
 #include "engine.h"
+#include <SDL_events.h>
 
 #include <iostream>
 #include <string>
@@ -15,8 +16,6 @@ void Engine::add(Component* c) {
 }
 
 void Engine::run() {
-  SDL_Event e;
-
   int minx, maxx, miny, maxy, advance;
   if (TTF_GlyphMetrics(font, 'A', &minx, &maxx, &miny, &maxy, &advance) == 0) {
     char_width = advance;
@@ -30,15 +29,12 @@ void Engine::run() {
   add(&text_editor);
 
   while (engine_running) {
+    SDL_Event e;
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);
 
       if (e.type == SDL_QUIT) {
         engine_running = false;
-      }
-
-      if (e.type == SDL_TEXTINPUT) {
-        continue;
       }
 
       for (auto c : components) {

@@ -20,8 +20,6 @@ void TextEditorModel::notify_text_observers() {
 }
 
 void TextEditorModel::update_cursor_range(LocationRange new_range) {
-  anchor_cursor_range = new_range;
-
   switch (cursor_range_modifier) {
     case 1: {
       cursor_range = new_range;
@@ -41,10 +39,9 @@ void TextEditorModel::update_cursor_range(LocationRange new_range) {
 }
 
 void TextEditorModel::update_cursor_range_for_current_line() {
-  LocationRange new_range = anchor_cursor_range;
-  new_range.end.x = (int)lines[cursor_location.y].size() - 1;
-  new_range.end.y = (int)lines.size() - 1;
-  update_cursor_range(new_range);
+  anchor_cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+  anchor_cursor_range.end.y = (int)lines.size() - 1;
+  update_cursor_range(anchor_cursor_range);
 }
 
 void TextEditorModel::update_cursor_range_modifier(int new_modifier) {
@@ -67,12 +64,16 @@ void TextEditorModel::move_cursor_left() {
 }
 
 void TextEditorModel::move_cursor_right() {
+  if (lines[cursor_location.y] == "") {
+    cursor_location.x = 0;
+    notify_cursor_observers();
+    return;
+  }
+
   if (cursor_location.x < cursor_range.end.x || cursor_location.x == -1) {
     cursor_location.x++;
 
-    LocationRange new_range = cursor_range;
-    new_range.end.x = (int)lines[cursor_location.y].size() - 1;
-    update_cursor_range(new_range);
+    update_cursor_range_for_current_line();
 
     notify_cursor_observers();
   }
@@ -171,7 +172,6 @@ void TextEditorModel::delete_range(LocationRange range) {
   if (range.start.y == range.end.y) {
     std::string& line = lines[range.start.y];
     line.erase(range.start.x, range.end.x - range.start.x);
-    std::cout << "line size " << lines.size() << "\n";
     notify_text_observers();
     return;
   }
@@ -209,7 +209,7 @@ void TextEditorModel::delete_newline_before_current_location() {
   lines.erase(lines.begin() + cursor_location.y);
 
   cursor_location.y--;
-  cursor_location.x = new_cursor_x;
+  cursor_location.x = new_cursor_x - 1;
 
   update_cursor_range_for_current_line();
 
@@ -243,4 +243,24 @@ void TextEditorModel::insert(char c) {
   notify_cursor_observers();
 }
 
-void TextEditorModel::insert(std::string text) {}
+void TextEditorModel::insert(std::string text) {
+  lines[cursor_location.y].insert(cursor_location.x + 1, text);
+  update_cursor_range_for_current_line();
+  move_cursor_right();
+
+  notify_text_observers();
+  notify_cursor_observers();
+}
+
+void TextEditorModel::insert_newline() {
+  std::string new_line = lines[cursor_location.y].substr(cursor_location.x + 1);
+  lines[cursor_location.y].erase(cursor_location.x + 1);
+  lines.insert(lines.cbegin() + cursor_location.y + 1, new_line);
+
+  cursor_location.y += 1;  
+  cursor_location.x = -1;
+  update_cursor_range_for_current_line();
+
+  notify_text_observers();
+  notify_cursor_observers();
+}
