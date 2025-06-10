@@ -2,4 +2,4 @@
 
 Graphical Vim implementation with minimal features.
 
-Supports basic NORMAL, VISUAL and INSERT mode.
+Supports basic NORMAL, VISUAL and INSERT modes.
