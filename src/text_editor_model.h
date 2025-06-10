@@ -8,10 +8,11 @@
 
 class TextEditorModel {
  private:
-  std::vector<std::string> lines;
   std::vector<CursorObserver*> cursor_observers;
   std::vector<TextObserver*> text_observers;
   Location cursor_location{0, 0};
+  LocationRange selection_range{Location{0, 0}, Location{0, 0}};
+  std::vector<std::string> lines;
 
   void notify_cursor_observers();
   void notify_text_observers();
@@ -19,7 +20,6 @@ class TextEditorModel {
  public:
   using Iterator = std::vector<std::string>::const_iterator;
 
-  std::pair<Location, Location> selection_range;
   LocationRange cursor_range;
 
   TextEditorModel(const std::string& text, LocationRange cursor_range)
@@ -45,6 +45,7 @@ class TextEditorModel {
 
   const Location& get_cursor_location() const;
 
+  Iterator line_at(int index) const;
   std::pair<Iterator, Iterator> all_lines() const;
   std::pair<Iterator, Iterator> lines_range(int index1, int index2) const;
 

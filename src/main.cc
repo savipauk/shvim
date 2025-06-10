@@ -10,7 +10,6 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl2.h"
-#include "text_editor.h"
 
 int main() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {

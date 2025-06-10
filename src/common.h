@@ -23,6 +23,10 @@ class Location {
   bool operator!=(const Location& other) const {
     return !(*this == other);
   }
+
+  bool operator<(const Location& other) {
+    return (y < other.y) || (y == other.y && x < other.x);
+  }
 };
 
 class LocationRange {

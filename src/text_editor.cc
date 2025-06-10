@@ -1,5 +1,6 @@
 #include "text_editor.h"
 
+#include <SDL_keycode.h>
 #include <SDL_opengl.h>
 #include <SDL_pixels.h>
 
@@ -50,8 +51,39 @@ void TextEditor::on_draw() {
     glVertex2f(engine->char_width * (cursor_location.x + 1),
                engine->char_height * (cursor_location.y + 1));
     glEnd();
-  } else if (mode == Mode::NORMAL) {
-    glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+  } else if (mode == Mode::VISUAL) {
+    LocationRange range = model.get_selection_range();
+    if (range.end < range.start) {
+      std::swap(range.start, range.end);
+    }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.5f, 0.5f, 0.5f, 0.3f);
+
+    for (int y = range.start.y; y <= range.end.y; ++y) {
+      int start_x = (y == range.start.y) ? range.start.x : 0;
+      int end_x = (y == range.end.y) ? range.end.x : model.line_at(y)->size();
+
+      for (int x = start_x; x <= end_x; ++x) {
+        float x_width = x * engine->char_width;
+        float y_width = y * engine->char_height;
+
+        glBegin(GL_QUADS);
+        glVertex2f(x_width, y_width);
+        glVertex2f(x_width + engine->char_width, y_width);
+        glVertex2f(x_width + engine->char_width, y_width + engine->char_height);
+        glVertex2f(x_width, y_width + engine->char_height);
+        glEnd();
+      }
+    }
+  }
+
+  if (mode == Mode::NORMAL || mode == Mode::VISUAL) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glColor4f(1.0f, 1.0f, 1.0f, 0.75f);
 
     glBegin(GL_POLYGON);
 
@@ -78,7 +110,7 @@ void TextEditor::on_key_event(const SDL_Event& e) {
         if (key == SDLK_ESCAPE) {
           mode = Mode::NORMAL;
         }
-        return; 
+        return;
       }
 
       // Movement
@@ -87,12 +119,33 @@ void TextEditor::on_key_event(const SDL_Event& e) {
       if (key == SDLK_k || key == SDLK_UP) model.move_cursor_up();
       if (key == SDLK_j || key == SDLK_DOWN) model.move_cursor_down();
 
+      if (mode == Mode::VISUAL) {
+        if (key == SDLK_ESCAPE) {
+          mode = Mode::NORMAL;
+          return;
+        }
+        LocationRange range = model.get_selection_range();
+        if (key == SDLK_d) {
+          mode = Mode::NORMAL;
+          model.delete_range(range);
+          return;
+        }
+        range.end = cursor_location;
+        model.set_selection_range(range);
+      }
+
       if (key == SDLK_ESCAPE) {
         engine->engine_running = false;
       }
 
       if (key == SDLK_i) {
         mode = Mode::INSERT;
+      }
+
+      if (key == SDLK_v) {
+        mode = Mode::VISUAL;
+        LocationRange range(cursor_location, cursor_location);
+        model.set_selection_range(range);
       }
 
       if (key == SDLK_x) {
