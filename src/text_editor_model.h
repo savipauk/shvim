@@ -13,17 +13,24 @@ class TextEditorModel {
   Location cursor_location{0, 0};
   LocationRange selection_range{Location{0, 0}, Location{0, 0}};
   std::vector<std::string> lines;
+  LocationRange cursor_range;
+  LocationRange anchor_cursor_range;
+  int cursor_range_modifier = 0;
 
   void notify_cursor_observers();
   void notify_text_observers();
 
+  void update_cursor_range(LocationRange new_range);
+  void update_cursor_range_for_current_line();
+
  public:
   using Iterator = std::vector<std::string>::const_iterator;
 
-  LocationRange cursor_range;
+  void update_cursor_range_modifier(int new_modifier);
+  LocationRange get_current_range();
 
   TextEditorModel(const std::string& text, LocationRange cursor_range)
-      : cursor_range(cursor_range) {
+      : cursor_range(cursor_range), anchor_cursor_range(cursor_range) {
     std::istringstream stream(text);
     std::string line;
     while (std::getline(stream, line)) {
@@ -55,8 +62,13 @@ class TextEditorModel {
   void delete_before();
   void delete_after();
   void delete_range(LocationRange range);
+  void delete_newline_before_current_location();
+
   LocationRange get_selection_range();
   void set_selection_range(LocationRange range);
+
+  void insert(char c);
+  void insert(std::string text);
 
   void add_text_observer(TextObserver* observer);
   void remove_text_observer(TextObserver* observer);

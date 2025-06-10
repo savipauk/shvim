@@ -46,9 +46,10 @@ void TextEditor::on_draw() {
   if (mode == Mode::INSERT) {
     glColor3f(1.0f, 0.0f, 0.0f);
     glBegin(GL_LINES);
-    glVertex2f(engine->char_width * (cursor_location.x + 1),
+    int x_offset = 1;
+    glVertex2f(engine->char_width * (cursor_location.x + 1) + x_offset,
                engine->char_height * cursor_location.y);
-    glVertex2f(engine->char_width * (cursor_location.x + 1),
+    glVertex2f(engine->char_width * (cursor_location.x + 1) + x_offset,
                engine->char_height * (cursor_location.y + 1));
     glEnd();
   } else if (mode == Mode::VISUAL) {
@@ -106,27 +107,59 @@ void TextEditor::on_key_event(const SDL_Event& e) {
     case SDL_KEYDOWN: {
       keys_pressed.insert(key);
 
+      // Movement that's allowed in insert mode
+      if (key == SDLK_LEFT) model.move_cursor_left();
+      if (key == SDLK_RIGHT) model.move_cursor_right();
+      if (key == SDLK_UP) model.move_cursor_up();
+      if (key == SDLK_DOWN) model.move_cursor_down();
+
       if (mode == Mode::INSERT) {
         if (key == SDLK_ESCAPE) {
           mode = Mode::NORMAL;
+          model.update_cursor_range_modifier(0);
+          if (cursor_location.x == -1) {
+            model.move_cursor_right();
+          }
+          return;
         }
+
+        if (key == SDLK_BACKSPACE) {
+          if (cursor_location.x > 0) {
+            model.delete_before();
+            model.move_cursor_left();
+          } else if (cursor_location.y > 0) {
+            model.delete_newline_before_current_location();
+          }
+          return;
+        }
+
+        if (key == SDLK_DELETE) {
+          if (cursor_location.x < model.get_current_range().end.x) {
+          }
+          model.delete_after();
+          return;
+        }
+
         return;
       }
 
-      // Movement
-      if (key == SDLK_h || key == SDLK_LEFT) model.move_cursor_left();
-      if (key == SDLK_l || key == SDLK_RIGHT) model.move_cursor_right();
-      if (key == SDLK_k || key == SDLK_UP) model.move_cursor_up();
-      if (key == SDLK_j || key == SDLK_DOWN) model.move_cursor_down();
+      // Movement that's not allowed in insert mode
+      if (key == SDLK_h) model.move_cursor_left();
+      if (key == SDLK_l) model.move_cursor_right();
+      if (key == SDLK_k) model.move_cursor_up();
+      if (key == SDLK_j) model.move_cursor_down();
 
       if (mode == Mode::VISUAL) {
         if (key == SDLK_ESCAPE) {
           mode = Mode::NORMAL;
+          model.update_cursor_range_modifier(0);
           return;
         }
         LocationRange range = model.get_selection_range();
         if (key == SDLK_d) {
           mode = Mode::NORMAL;
+          model.update_cursor_range_modifier(0);
+          range.end.x += 1;
           model.delete_range(range);
           return;
         }
@@ -136,24 +169,38 @@ void TextEditor::on_key_event(const SDL_Event& e) {
 
       if (key == SDLK_ESCAPE) {
         engine->engine_running = false;
+        return;
       }
 
       if (key == SDLK_i) {
         mode = Mode::INSERT;
+        model.update_cursor_range_modifier(-1);
+        model.move_cursor_left();
+        return;
+      }
+
+      if (key == SDLK_a) {
+        mode = Mode::INSERT;
+        model.update_cursor_range_modifier(-1);
+        return;
       }
 
       if (key == SDLK_v) {
         mode = Mode::VISUAL;
+        model.update_cursor_range_modifier(1);
         LocationRange range(cursor_location, cursor_location);
         model.set_selection_range(range);
+        return;
       }
 
       if (key == SDLK_x) {
         if (e.key.keysym.mod & KMOD_SHIFT) {
+          model.move_cursor_left();
           model.delete_after();
         } else {
           model.delete_before();
         }
+        return;
       }
 
       break;

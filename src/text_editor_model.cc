@@ -19,7 +19,47 @@ void TextEditorModel::notify_text_observers() {
   }
 }
 
+void TextEditorModel::update_cursor_range(LocationRange new_range) {
+  anchor_cursor_range = new_range;
+
+  switch (cursor_range_modifier) {
+    case 1: {
+      cursor_range = new_range;
+      cursor_range.end.x += 1;
+      break;
+    }
+    case -1: {
+      cursor_range = new_range;
+      cursor_range.start.x -= 1;
+      break;
+    }
+
+    default: {
+      cursor_range = anchor_cursor_range;
+    }
+  }
+}
+
+void TextEditorModel::update_cursor_range_for_current_line() {
+  LocationRange new_range = anchor_cursor_range;
+  new_range.end.x = (int)lines[cursor_location.y].size() - 1;
+  new_range.end.y = (int)lines.size() - 1;
+  update_cursor_range(new_range);
+}
+
+void TextEditorModel::update_cursor_range_modifier(int new_modifier) {
+  cursor_range_modifier = new_modifier;
+  update_cursor_range(anchor_cursor_range);
+}
+
+LocationRange TextEditorModel::get_current_range() {
+  return cursor_range;
+}
+
 void TextEditorModel::move_cursor_left() {
+  // if (cursor_location.x > 0) {
+  //       cursor_location.x--;
+  //   }
   if (cursor_location.x > cursor_range.start.x) {
     cursor_location.x--;
     notify_cursor_observers();
@@ -27,9 +67,13 @@ void TextEditorModel::move_cursor_left() {
 }
 
 void TextEditorModel::move_cursor_right() {
-  if (cursor_location.x < cursor_range.end.x) {
+  if (cursor_location.x < cursor_range.end.x || cursor_location.x == -1) {
     cursor_location.x++;
-    cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+
+    LocationRange new_range = cursor_range;
+    new_range.end.x = (int)lines[cursor_location.y].size() - 1;
+    update_cursor_range(new_range);
+
     notify_cursor_observers();
   }
 }
@@ -37,12 +81,15 @@ void TextEditorModel::move_cursor_right() {
 void TextEditorModel::move_cursor_up() {
   if (cursor_location.y > cursor_range.start.y) {
     cursor_location.y--;
-    cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+
+    update_cursor_range_for_current_line();
+
     cursor_location.x =
         std::min(cursor_location.x, (int)(lines[cursor_location.y].size()) - 1);
     if (cursor_location.x == -1) {
       cursor_location.x = cursor_range.start.x;
     }
+
     notify_cursor_observers();
   }
 }
@@ -50,7 +97,9 @@ void TextEditorModel::move_cursor_up() {
 void TextEditorModel::move_cursor_down() {
   if (cursor_location.y < cursor_range.end.y) {
     cursor_location.y++;
-    cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+
+    update_cursor_range_for_current_line();
+
     cursor_location.x =
         std::min(cursor_location.x, (int)(lines[cursor_location.y].size()) - 1);
     if (cursor_location.x == -1) {
@@ -88,21 +137,32 @@ void TextEditorModel::remove_cursor_observer(CursorObserver* observer) {
 }
 
 void TextEditorModel::delete_before() {
-  if (cursor_location.x >= (int)lines[cursor_location.y].size() - 1) {
-    lines[cursor_location.y].erase(cursor_location.x, 1);
-    move_cursor_left();
-  } else {
-    lines[cursor_location.y].erase(cursor_location.x, 1);
-  }
+  lines[cursor_location.y].erase(cursor_location.x, 1);
+  // move_cursor_left();
 
-  cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+  update_cursor_range_for_current_line();
+
   notify_text_observers();
 }
 
 void TextEditorModel::delete_after() {
-  lines[cursor_location.y].erase(cursor_location.x, 1);
-  move_cursor_left();
-  cursor_range.end.x = (int)lines[cursor_location.y].size() - 1;
+  if (cursor_location.x >= (int)lines[cursor_location.y].size() - 1) {
+    if (cursor_location.y == (int)lines.size() - 1) {
+      return;
+    }
+
+    std::string next_line = lines[cursor_location.y + 1];
+
+    lines[cursor_location.y] += next_line;
+
+    lines.erase(lines.begin() + cursor_location.y + 1);
+
+    notify_cursor_observers();
+  } else {
+    lines[cursor_location.y].erase(cursor_location.x + 1, 1);
+  }
+
+  update_cursor_range_for_current_line();
 
   notify_text_observers();
 }
@@ -130,11 +190,30 @@ void TextEditorModel::delete_range(LocationRange range) {
 
   lines.erase(first_line_to_erase, last_line_to_erase);
 
-  cursor_range.end.x = (int)lines[lines.size() - 1].size() - 1;
-  cursor_range.end.y = (int)lines.size() - 1;
   notify_text_observers();
 
   cursor_location = range.start;
+  notify_cursor_observers();
+
+  update_cursor_range_for_current_line();
+}
+
+void TextEditorModel::delete_newline_before_current_location() {
+  if (cursor_location.y == 0) {
+    return;
+  }
+
+  std::string current_line = lines[cursor_location.y];
+  int new_cursor_x = lines[cursor_location.y - 1].length();
+  lines[cursor_location.y - 1] += current_line;
+  lines.erase(lines.begin() + cursor_location.y);
+
+  cursor_location.y--;
+  cursor_location.x = new_cursor_x;
+
+  update_cursor_range_for_current_line();
+
+  notify_text_observers();
   notify_cursor_observers();
 }
 
@@ -155,3 +234,13 @@ void TextEditorModel::remove_text_observer(TextObserver* observer) {
       std::remove(text_observers.begin(), text_observers.end(), observer),
       text_observers.end());
 }
+
+void TextEditorModel::insert(char c) {
+  lines[cursor_location.y].insert(cursor_location.x, std::to_string(c));
+  move_cursor_right();
+
+  notify_text_observers();
+  notify_cursor_observers();
+}
+
+void TextEditorModel::insert(std::string text) {}
