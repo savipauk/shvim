@@ -5,7 +5,7 @@ set -x  # Print each command before executing
 mkdir -p build
 cd build
 
-# Do a clean run if doing ./build.sh --clean
+# Do a clean run if doing ./run.sh --clean
 if [[ $1 == "--clean" ]]; then
   rm -rf *
   cmake ../
